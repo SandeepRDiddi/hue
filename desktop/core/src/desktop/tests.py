@@ -265,10 +265,16 @@ def test_dump_config():
   response = client_not_me.get(reverse('desktop.views.dump_config'))
   assert_true("You must be a superuser" in response.content, response.content)
 
-  os.environ["HUE_CONF_DIR"] = "/tmp/test_hue_conf_dir"
-  resp = c.get(reverse('desktop.views.dump_config'))
-  del os.environ["HUE_CONF_DIR"]
-  assert_true('/tmp/test_hue_conf_dir' in resp.content, resp)
+  try:
+    orig_hue_conf_dir = os.getenv("HUE_CONF_DIR")
+    os.environ["HUE_CONF_DIR"] = "/tmp/test_hue_conf_dir"
+    resp = c.get(reverse('desktop.views.dump_config'))
+    del os.environ["HUE_CONF_DIR"]
+    assert_true('/tmp/test_hue_conf_dir' in resp.content, resp)
+  finally:
+    if orig_hue_conf_dir:
+      os.environ["HUE_CONF_DIR"] = orig_hue_conf_dir
+
 
 
 def hue_version():
@@ -789,14 +795,21 @@ def test_config_check():
         assert_true('klingon' in resp.content, resp)
         assert_true('Encoding not supported' in resp.content, resp)
 
-        # Set HUE_CONF_DIR and make sure check_config returns appropriate conf
-        os.environ["HUE_CONF_DIR"] = "/tmp/test_hue_conf_dir"
-        resp = cli.get('/desktop/debug/check_config')
-        del os.environ["HUE_CONF_DIR"]
-        assert_true('/tmp/test_hue_conf_dir' in resp.content, resp)
+
+        try:
+          # Set HUE_CONF_DIR and make sure check_config returns appropriate conf
+          orig_hue_conf_dir = os.getenv("HUE_CONF_DIR")
+          os.environ["HUE_CONF_DIR"] = "/tmp/test_hue_conf_dir"
+          resp = cli.get('/desktop/debug/check_config')
+          del os.environ["HUE_CONF_DIR"]
+          assert_true('/tmp/test_hue_conf_dir' in resp.content, resp)
+        finally:
+          if orig_hue_conf_dir:
+            os.environ["HUE_CONF_DIR"] = orig_hue_conf_dir
       finally:
         for old_conf in reset:
           old_conf()
+
 
 
 def test_last_access_time():
